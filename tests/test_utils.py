@@ -4,9 +4,8 @@ from django.test import TestCase, override_settings
 from django.test.client import RequestFactory
 from mock import MagicMock
 
-from mozilla_django_oidc.utils import (absolutify,
-                                       add_state_and_nonce_to_session,
-                                       import_from_settings)
+from mozilla_django_oidc.utils import absolutify, add_state_and_verifier_and_nonce_to_session, \
+    import_from_settings
 
 
 class SettingImportTestCase(TestCase):
@@ -67,7 +66,7 @@ class SessionStateTestCase(TestCase):
         state = 'example_state'
         params = {}
 
-        add_state_and_nonce_to_session(self.request, state, params)
+        add_state_and_verifier_and_nonce_to_session(self.request, state, params)
 
         self.assertIn('oidc_states', self.request.session)
         self.assertEqual(1, len(self.request.session['oidc_states']))
@@ -78,12 +77,12 @@ class SessionStateTestCase(TestCase):
         state2 = 'example_state_2'
         params = {}
 
-        add_state_and_nonce_to_session(self.request, state1, params)
+        add_state_and_verifier_and_nonce_to_session(self.request, state1, params)
 
         self.assertEqual(1, len(self.request.session['oidc_states']))
         self.assertIn(state1, self.request.session['oidc_states'].keys())
 
-        add_state_and_nonce_to_session(self.request, state2, params)
+        add_state_and_verifier_and_nonce_to_session(self.request, state2, params)
 
         self.assertEqual(2, len(self.request.session['oidc_states']))
         self.assertIn(state1, self.request.session['oidc_states'].keys())
@@ -96,14 +95,14 @@ class SessionStateTestCase(TestCase):
         params = {}
         for i in range(limit):
             state = 'example_state_{}'.format(i)
-            add_state_and_nonce_to_session(self.request, state, params)
+            add_state_and_verifier_and_nonce_to_session(self.request, state, params)
 
         self.assertEqual(limit, len(self.request.session['oidc_states']))
         self.assertIn(first_state, self.request.session['oidc_states'])
 
         # Add another state which should remove the very first one
         additional_state = 'example_state'
-        add_state_and_nonce_to_session(self.request, additional_state, params)
+        add_state_and_verifier_and_nonce_to_session(self.request, additional_state, params)
 
         # Make sure the oldest state was deleted
         self.assertNotIn(first_state, self.request.session['oidc_states'])
@@ -117,7 +116,7 @@ class SessionStateTestCase(TestCase):
         state = 'example_state'
         params = {}
 
-        add_state_and_nonce_to_session(self.request, state, params)
+        add_state_and_verifier_and_nonce_to_session(self.request, state, params)
 
         # Test state dictionary
         self.assertIn(state, self.request.session['oidc_states'].keys())
@@ -135,6 +134,6 @@ class SessionStateTestCase(TestCase):
             'nonce': 'example_nonce'
         }
 
-        add_state_and_nonce_to_session(self.request, state, params)
+        add_state_and_verifier_and_nonce_to_session(self.request, state, params)
 
         self.assertNotEqual(self.request.session['oidc_states'][state]['nonce'], None)
