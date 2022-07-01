@@ -35,8 +35,8 @@ class SessionRefresh(MiddlewareMixin):
 
     """
 
-    def __init__(self, *args, **kwargs):
-        super(SessionRefresh, self).__init__(*args, **kwargs)
+    def __init__(self, get_response):
+        super(SessionRefresh, self).__init__(get_response)
         self.OIDC_EXEMPT_URLS = self.get_settings('OIDC_EXEMPT_URLS', [])
         self.OIDC_OP_AUTHORIZATION_ENDPOINT = self.get_settings('OIDC_OP_AUTHORIZATION_ENDPOINT')
         self.OIDC_RP_CLIENT_ID = self.get_settings('OIDC_RP_CLIENT_ID')
