@@ -279,12 +279,13 @@ class OIDCAuthenticationBackend(ModelBackend):
         token_info = self.get_token(token_payload)
         id_token = token_info.get('id_token')
         access_token = token_info.get('access_token')
+        refresh_token = token_info.get('refresh_token')
 
         # Validate the token
         payload = self.verify_token(id_token, nonce=nonce)
 
         if payload:
-            self.store_tokens(access_token, id_token)
+            self.store_tokens(access_token, id_token, refresh_token)
             try:
                 return self.get_or_create_user(access_token, id_token, payload)
             except SuspiciousOperation as exc:
@@ -293,7 +294,7 @@ class OIDCAuthenticationBackend(ModelBackend):
 
         return None
 
-    def store_tokens(self, access_token, id_token):
+    def store_tokens(self, access_token, id_token, refresh_token):
         """Store OIDC tokens."""
         session = self.request.session
 
@@ -302,6 +303,9 @@ class OIDCAuthenticationBackend(ModelBackend):
 
         if self.get_settings('OIDC_STORE_ID_TOKEN', False):
             session['oidc_id_token'] = id_token
+
+        if self.get_settings('OIDC_STORE_REFRESH_TOKEN', False):
+            session['oidc_refresh_token'] = refresh_token
 
     def get_or_create_user(self, access_token, id_token, payload):
         """Returns a User instance if 1 user is found. Creates a user if not found
