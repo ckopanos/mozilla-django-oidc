@@ -44,7 +44,14 @@ class OIDCAuthenticationCallbackView(View):
         return next_url or resolve_url(self.get_settings('LOGIN_REDIRECT_URL', '/'))
 
     def login_failure(self):
-        return HttpResponseRedirect(self.failure_url)
+        failure_url = self.failure_url
+        error = self.request.GET.get('error')
+        error_description = self.request.GET.get('error_description', '')
+        request_parameters = ""
+        if error:
+            request_parameters = urlencode({'error': error, 'error_description': error_description})
+        failure_url = f"{absolutify(self.request, failure_url)}?{request_parameters}"
+        return HttpResponseRedirect(failure_url)
 
     def login_success(self):
         # If the user hasn't changed (because this is a session refresh instead of a
@@ -65,7 +72,8 @@ class OIDCAuthenticationCallbackView(View):
 
         if request.GET.get('error'):
             # Ouch! Something important failed.
-
+            if request.GET.get('error') == 'account_selection_required':
+                request.session['oidc_account_selection_required'] = True
             # Delete the state entry also for failed authentication attempts
             # to prevent replay attacks.
             if ('state' in request.GET
@@ -101,7 +109,7 @@ class OIDCAuthenticationCallbackView(View):
             code_verifier = request.session['oidc_states'][state].get('code_verifier')
             nonce = request.session['oidc_states'][state]['nonce']
             del request.session['oidc_states'][state]
-
+            request.session.pop('oidc_account_selection_required', None)
             # Authenticating is slow, so save the updated oidc_states.
             request.session.save()
             # Reset the session. This forces the session to get reloaded from the database after
@@ -224,7 +232,12 @@ class OIDCAuthenticationRequestView(View):
         return HttpResponseRedirect(redirect_url)
 
     def get_extra_params(self, request):
-        return self.get_settings('OIDC_AUTH_REQUEST_EXTRA_PARAMS', {})
+        params = self.get_settings('OIDC_AUTH_REQUEST_EXTRA_PARAMS', {})
+        if request.session.get('oidc_account_selection_required', False) is True:
+            params.update({
+                'prompt': 'login'
+            })
+        return params
 
 
 class OIDCLogoutView(View):
